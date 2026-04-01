@@ -1,141 +1,269 @@
 <!doctype html>
 <html lang="zh-Hant">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>記帳工具 (Google Sheets)</title>
-  <link rel="stylesheet" href="./styles.css" />
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>記帳工具 — Google 試算表記帳</title>
+    <meta
+      name="description"
+      content="串接 Google 試算表的個人記帳工具，支援收入支出分類統計與每月報表。"
+    />
+    <link rel="stylesheet" href="./styles.css" />
 
-  <!-- 重要：用 onload 確保 GIS 載入完成後才初始化 -->
-  <script src="https://accounts.google.com/gsi/client" async defer onload="onGisLoaded()"></script>
-</head>
+    <!-- Google Identity Services (GIS) -->
+    <script
+      src="https://accounts.google.com/gsi/client"
+      async
+      defer
+      onload="onGisLoaded()"
+    ></script>
+  </head>
 
-<body>
-  <header class="container">
-    <div class="row space-between center">
-      <h1>記帳工具</h1>
-      <div class="row gap">
-        <button id="btnSignIn" class="btn primary" disabled>登入 Google</button>
-        <button id="btnSignOut" class="btn" disabled>登出</button>
-      </div>
-    </div>
-    <p class="muted">資料來源：Google 試算表「記帳紀錄」「欄位表」</p>
-  </header>
-
-  <main class="container grid">
-    <section class="card">
-      <h2>新增記帳</h2>
-
-      <form id="recordForm" class="form">
-        <div class="grid2">
-          <label>
-            日期
-            <input id="fDate" type="date" required />
-          </label>
-
-          <label>
-            類型
-            <select id="fType" required>
-              <option value="支出">支出</option>
-              <option value="收入">收入</option>
-            </select>
-          </label>
-        </div>
-
-        <div class="grid2">
-          <label>
-            分類
-            <select id="fCategory" required></select>
-          </label>
-
-          <label>
-            付款方式
-            <select id="fPayment" required></select>
-          </label>
-        </div>
-
-        <div class="grid2">
-          <label>
-            金額
-            <input id="fAmount" type="number" min="0" step="1" inputmode="numeric" required />
-          </label>
-
-          <label>
-            說明
-            <input id="fDescription" type="text" placeholder="例如：早餐、房租、薪資" required />
-          </label>
-        </div>
-
-        <div class="row gap">
-          <button id="btnSubmit" class="btn primary" type="submit" disabled>新增</button>
-          <button id="btnReload" class="btn" type="button" disabled>重新讀取本月資料</button>
-        </div>
-
-        <p id="status" class="status muted"></p>
-      </form>
-    </section>
-
-    <section class="card">
+  <body>
+    <!-- ======================================================
+       Header
+  ====================================================== -->
+    <header class="container">
       <div class="row space-between center">
-        <h2>每月概覽</h2>
+        <div class="header-logo">
+          <div class="logo-icon">💰</div>
+          <div>
+            <h1>記帳工具</h1>
+            <div class="header-sub">Google 試算表 · 個人財務追蹤</div>
+          </div>
+        </div>
+
         <div class="row gap center">
-          <label class="row gap center">
-            月份
-            <input id="monthPicker" type="month" disabled />
-          </label>
+          <div class="user-info" id="userInfo">
+            <div class="user-avatar" id="userAvatar">?</div>
+            <span id="userName">未登入</span>
+          </div>
+          <button id="btnSignIn" class="btn primary" disabled>
+            <svg
+              width="15"
+              height="15"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4" />
+              <polyline points="10 17 15 12 10 7" />
+              <line x1="15" y1="12" x2="3" y2="12" />
+            </svg>
+            登入 Google
+          </button>
+          <button id="btnSignOut" class="btn danger" disabled>登出</button>
         </div>
       </div>
+    </header>
 
-      <div class="stats">
-        <div class="stat">
-          <div class="muted">收入</div>
-          <div id="sumIncome" class="big">0</div>
+    <!-- ======================================================
+       Main Grid
+  ====================================================== -->
+    <main class="grid">
+      <!-- ── 左欄：新增記帳 ── -->
+      <section class="card">
+        <div class="card-header">
+          <h2>✏️ 新增記帳</h2>
         </div>
-        <div class="stat">
-          <div class="muted">支出</div>
-          <div id="sumExpense" class="big">0</div>
+
+        <form id="recordForm" class="form">
+          <div class="grid2">
+            <label>
+              日期
+              <input id="fDate" type="date" required />
+            </label>
+
+            <label>
+              類型
+              <select id="fType" required>
+                <option value="支出">💸 支出</option>
+                <option value="收入">💰 收入</option>
+              </select>
+            </label>
+          </div>
+
+          <div class="grid2">
+            <label>
+              分類
+              <select id="fCategory" required></select>
+            </label>
+
+            <label>
+              付款方式
+              <select id="fPayment" required></select>
+            </label>
+          </div>
+
+          <div class="grid2">
+            <label>
+              金額 (NT$)
+              <input
+                id="fAmount"
+                type="number"
+                min="0"
+                step="1"
+                inputmode="numeric"
+                placeholder="0"
+                required
+              />
+            </label>
+
+            <label>
+              說明
+              <input
+                id="fDescription"
+                type="text"
+                placeholder="例：早餐、薪資、電費"
+                required
+              />
+            </label>
+          </div>
+
+          <div class="btn-actions">
+            <button id="btnSubmit" class="btn primary" type="submit" disabled>
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2.5"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <line x1="12" y1="5" x2="12" y2="19" />
+                <line x1="5" y1="12" x2="19" y2="12" />
+              </svg>
+              新增記帳
+            </button>
+            <button id="btnReload" class="btn" type="button" disabled>
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <polyline points="23 4 23 10 17 10" />
+                <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" />
+              </svg>
+              重新載入
+            </button>
+          </div>
+
+          <p id="status" class="status muted"></p>
+        </form>
+      </section>
+
+      <!-- ── 右欄：每月概覽 ── -->
+      <section class="card">
+        <div class="card-header">
+          <h2>📊 每月概覽</h2>
+          <div class="month-nav">
+            <button id="btnPrevMonth" class="btn-month" disabled title="上個月">&#8249;</button>
+            <div class="month-picker-wrap">
+              <div id="monthLabel" class="month-label">載入中…</div>
+              <input id="monthPicker" type="month" disabled />
+            </div>
+            <button id="btnNextMonth" class="btn-month" disabled title="下個月">&#8250;</button>
+          </div>
         </div>
-        <div class="stat">
-          <div class="muted">結餘</div>
-          <div id="sumNet" class="big">0</div>
+
+        <div class="stats">
+          <div class="stat income">
+            <div class="stat-label">收入</div>
+            <div id="sumIncome" class="big">0</div>
+          </div>
+          <div class="stat expense">
+            <div class="stat-label">支出</div>
+            <div id="sumExpense" class="big">0</div>
+          </div>
+          <div class="stat net">
+            <div class="stat-label">結餘</div>
+            <div id="sumNet" class="big">0</div>
+          </div>
         </div>
-      </div>
 
-      <h3>支出分類統計</h3>
-      <div id="categoryBreakdown" class="breakdown"></div>
-    </section>
+        <hr class="divider" />
 
-    <section class="card full">
-      <div class="row space-between center">
-        <h2>本月明細</h2>
-        <div class="row gap">
-          <button id="btnRefresh" class="btn" disabled>刷新</button>
+        <h3>支出分類統計</h3>
+        <div id="categoryBreakdown" class="breakdown">
+          <div class="empty-state">
+            <div class="empty-icon">📂</div>
+            登入後即可查看分類統計
+          </div>
         </div>
-      </div>
+      </section>
 
-      <div class="tableWrap">
-        <table class="table">
-          <thead>
-            <tr>
-              <th>日期</th>
-              <th>類型</th>
-              <th>分類</th>
-              <th class="right">金額</th>
-              <th>說明</th>
-              <th>付款方式</th>
-            </tr>
-          </thead>
-          <tbody id="recordsTbody"></tbody>
-        </table>
-      </div>
-    </section>
-  </main>
+      <!-- ── 全寬：本月明細 ── -->
+      <section class="card full">
+        <div class="card-header">
+          <h2>📋 本月明細</h2>
+          <div class="row gap">
+            <button id="btnRefresh" class="btn" disabled>
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <polyline points="23 4 23 10 17 10" />
+                <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" />
+              </svg>
+              刷新
+            </button>
+          </div>
+        </div>
 
-  <footer class="container footer muted">
-    <small>Tips：欄位表若未填 Type，會被視為「支出/收入共用選項」。</small>
-  </footer>
+        <div class="tableWrap">
+          <table class="table">
+            <thead>
+              <tr>
+                <th>日期</th>
+                <th>類型</th>
+                <th>分類</th>
+                <th class="right">金額 (NT$)</th>
+                <th>說明</th>
+                <th>付款方式</th>
+              </tr>
+            </thead>
+            <tbody id="recordsTbody">
+              <tr>
+                <td colspan="6">
+                  <div class="empty-state">
+                    <div class="empty-icon">🔐</div>
+                    請先登入 Google 以載入記帳資料
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </main>
 
-  <!-- 放最後，確保 DOM 先就緒 -->
-  <script src="./app.js"></script>
-</body>
+    <!-- ======================================================
+       Footer
+  ====================================================== -->
+    <footer class="container">
+      <small
+        >💡 小提示：欄位表若 Type
+        欄留白，該選項會同時出現在「收入」及「支出」的選單中。</small
+      >
+    </footer>
+
+    <!-- 放最後，確保 DOM 先就緒 -->
+    <script src="./app.js"></script>
+  </body>
 </html>
